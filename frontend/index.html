@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="使用摄像头手势完成六次成爻，并以九宫八卦圆盘呈现本卦、动爻与变卦。"
+    />
+    <title>玄枢 · 手势起卦</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="site-header">
+        <a class="brand" href="#" aria-label="玄枢首页">
+          <span class="brand-mark" aria-hidden="true">☯</span>
+          <span>
+            <strong>玄枢</strong>
+            <small>GESTURE RITUAL</small>
+          </span>
+        </a>
+        <div class="header-status">
+          <span class="status-dot" id="serviceDot" aria-hidden="true"></span>
+          <span id="serviceStatus">正在检查解析服务</span>
+        </div>
+      </header>
+
+      <main class="app-shell">
+        <section class="ritual-stage" aria-labelledby="ritualTitle">
+          <video id="cameraVideo" autoplay muted playsinline aria-label="摄像头实时画面"></video>
+          <canvas id="handOverlay" aria-hidden="true"></canvas>
+          <div class="stage-vignette" aria-hidden="true"></div>
+
+          <div class="ritual-orbit" id="ritualOrbit">
+            <div class="orbit-line orbit-line-outer" aria-hidden="true"></div>
+            <div class="hexagram-ring" id="hexagramRing" aria-label="六十四卦环"></div>
+            <div class="orbit-line orbit-line-middle" aria-hidden="true"></div>
+            <div class="bagua-ring" aria-label="八卦">
+              <span style="--angle: 0deg">乾 ☰</span>
+              <span style="--angle: 45deg">兑 ☱</span>
+              <span style="--angle: 90deg">离 ☲</span>
+              <span style="--angle: 135deg">震 ☳</span>
+              <span style="--angle: 180deg">巽 ☴</span>
+              <span style="--angle: 225deg">坎 ☵</span>
+              <span style="--angle: 270deg">艮 ☶</span>
+              <span style="--angle: 315deg">坤 ☷</span>
+            </div>
+
+            <div class="jiugong" aria-label="九宫">
+              <span>巽</span><span>离</span><span>坤</span>
+              <span>震</span><span class="center-palace">中</span><span>兑</span>
+              <span>艮</span><span>坎</span><span>乾</span>
+            </div>
+
+            <div class="taiji" aria-hidden="true">
+              <span class="taiji-dark"></span>
+              <span class="taiji-light"></span>
+            </div>
+          </div>
+
+          <div class="stage-copy">
+            <p class="eyebrow">六十四卦 · 六次成爻</p>
+            <h1 id="ritualTitle">举手入局，握拳成爻</h1>
+            <p id="gestureHint">开启摄像头后，张开手掌唤醒圆盘，再以握拳依次生成六爻。</p>
+          </div>
+
+          <div class="gesture-chip" aria-live="polite">
+            <span id="gestureName">等待手势</span>
+            <strong id="gestureScore">—</strong>
+          </div>
+        </section>
+
+        <aside class="control-panel" aria-label="起卦控制台">
+          <div class="mode-switch" aria-label="术数模式">
+            <button class="mode-button active" type="button">六爻起卦</button>
+            <button class="mode-button" type="button" disabled title="第二阶段接入">奇门起盘</button>
+          </div>
+
+          <section class="control-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">当前进度</p>
+                <h2><span id="lineCount">0</span> / 6 爻</h2>
+              </div>
+              <button class="text-button" id="resetButton" type="button">重置</button>
+            </div>
+            <div class="line-stack" id="lineStack" aria-label="六爻，自下而上生成"></div>
+          </section>
+
+          <section class="control-section result-section" id="resultSection" aria-live="polite">
+            <p class="eyebrow">卦象结果</p>
+            <div class="empty-result" id="emptyResult">
+              六次成爻后，将在此显示本卦、动爻与变卦。
+            </div>
+            <div class="result-card" id="resultCard" hidden>
+              <div>
+                <span>本卦</span>
+                <strong id="primaryHexagram">—</strong>
+                <small id="primaryTrigrams">—</small>
+              </div>
+              <div class="result-arrow" aria-hidden="true">→</div>
+              <div>
+                <span>变卦</span>
+                <strong id="changedHexagram">—</strong>
+                <small id="changedTrigrams">—</small>
+              </div>
+              <p id="movingLines">无动爻</p>
+            </div>
+          </section>
+
+          <div class="primary-actions">
+            <button class="primary-button" id="cameraButton" type="button">开启摄像头</button>
+            <button class="secondary-button" id="castButton" type="button">手动生成一爻</button>
+          </div>
+
+          <p class="privacy-note">
+            摄像头画面仅在本机浏览器内进行手势识别，不上传后端。手动按钮可作为无摄像头时的替代方式。
+          </p>
+        </aside>
+      </main>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
