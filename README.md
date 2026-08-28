@@ -49,6 +49,10 @@ http://127.0.0.1:5174
 远程部署应由 HTTPS 反向代理接入该端口。浏览器的摄像头 API 在远程 HTTP 页面不可用；
 未配置 HTTPS 时，手动成爻和卦象解析仍可使用。
 
+当目标服务器无法拉取 Docker Hub 镜像时，可使用 `docker-compose.offline.yml` 复用服务器上
+已有的兼容 FastAPI 运行镜像。先在部署机执行 `pnpm build` 或上传 `frontend/dist`，再设置
+`SHUSHU_RUNTIME_IMAGE` 后启动该 Compose 文件。这个后备方案不替代标准 Docker 构建。
+
 ## 验证
 
 ```bash

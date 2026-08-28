@@ -1,0 +1,33 @@
+name: shushu-gesture-ritual
+
+services:
+  ritual:
+    image: ${SHUSHU_RUNTIME_IMAGE:?Set SHUSHU_RUNTIME_IMAGE to a compatible FastAPI runtime image.}
+    working_dir: /ritual
+    command:
+      - uvicorn
+      - app.production:app
+      - --app-dir
+      - /ritual
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    environment:
+      SHUSHU_STATIC_DIR: /ritual/static
+    ports:
+      - "127.0.0.1:${SHUSHU_BIND_PORT:-5174}:8000"
+    volumes:
+      - ./backend/app:/ritual/app:ro
+      - ./frontend/dist:/ritual/static:ro
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
