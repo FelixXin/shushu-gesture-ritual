@@ -27,12 +27,18 @@
       </header>
 
       <main class="app-shell">
-        <section class="ritual-stage" aria-labelledby="ritualTitle">
+        <section class="ritual-stage" id="ritualStage" aria-labelledby="ritualTitle">
           <video id="cameraVideo" autoplay muted playsinline aria-label="摄像头实时画面"></video>
+          <canvas id="ambientCanvas" aria-hidden="true"></canvas>
           <canvas id="handOverlay" aria-hidden="true"></canvas>
+          <div class="celestial-noise" aria-hidden="true"></div>
           <div class="stage-vignette" aria-hidden="true"></div>
+          <div class="cast-flash" id="castFlash" aria-hidden="true"></div>
 
           <div class="ritual-orbit" id="ritualOrbit">
+            <div class="energy-halo energy-halo-outer" aria-hidden="true"></div>
+            <div class="energy-halo energy-halo-inner" aria-hidden="true"></div>
+            <div class="celestial-spokes" aria-hidden="true"></div>
             <div class="orbit-line orbit-line-outer" aria-hidden="true"></div>
             <div class="hexagram-ring" id="hexagramRing" aria-label="六十四卦环"></div>
             <div class="orbit-line orbit-line-middle" aria-hidden="true"></div>
@@ -57,6 +63,10 @@
               <span class="taiji-dark"></span>
               <span class="taiji-light"></span>
             </div>
+
+            <div class="gesture-aura" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
           </div>
 
           <div class="stage-copy">
@@ -66,7 +76,11 @@
           </div>
 
           <div class="gesture-chip" aria-live="polite">
-            <span id="gestureName">等待手势</span>
+            <span class="gesture-orb" aria-hidden="true"></span>
+            <div class="gesture-readout">
+              <span id="gestureName">等待手势</span>
+              <div class="gesture-meter" aria-hidden="true"><i id="gestureProgress"></i></div>
+            </div>
             <strong id="gestureScore">—</strong>
           </div>
         </section>
@@ -84,6 +98,9 @@
                 <h2><span id="lineCount">0</span> / 6 爻</h2>
               </div>
               <button class="text-button" id="resetButton" type="button">重置</button>
+            </div>
+            <div class="ritual-progress" id="ritualProgress" aria-label="六爻进度">
+              <i></i><i></i><i></i><i></i><i></i><i></i>
             </div>
             <div class="line-stack" id="lineStack" aria-label="六爻，自下而上生成"></div>
           </section>

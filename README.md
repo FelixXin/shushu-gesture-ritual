@@ -40,6 +40,15 @@ pnpm dev
 docker compose up --build
 ```
 
+Docker 运行时将 API 留在容器网络内，并仅在本机回环地址开放网页：
+
+```text
+http://127.0.0.1:5174
+```
+
+远程部署应由 HTTPS 反向代理接入该端口。浏览器的摄像头 API 在远程 HTTP 页面不可用；
+未配置 HTTPS 时，手动成爻和卦象解析仍可使用。
+
 ## 验证
 
 ```bash

@@ -34,12 +34,26 @@ const element = <T extends HTMLElement>(id: string): T => {
 };
 
 const video = element<HTMLVideoElement>("cameraVideo");
+const ambientCanvas = element<HTMLCanvasElement>("ambientCanvas");
+const ambientContext = ambientCanvas.getContext("2d");
 const overlay = element<HTMLCanvasElement>("handOverlay");
 const overlayContext = overlay.getContext("2d");
+const ritualStage = element<HTMLElement>("ritualStage");
 const ritualOrbit = element<HTMLDivElement>("ritualOrbit");
+const gestureProgress = element<HTMLElement>("gestureProgress");
+const castFlash = element<HTMLDivElement>("castFlash");
 const cameraButton = element<HTMLButtonElement>("cameraButton");
 const castButton = element<HTMLButtonElement>("castButton");
 const resetButton = element<HTMLButtonElement>("resetButton");
+
+type AmbientParticle = {
+  x: number;
+  y: number;
+  radius: number;
+  speed: number;
+  alpha: number;
+  phase: number;
+};
 
 let recognizer: GestureRecognizer | null = null;
 let stream: MediaStream | null = null;
@@ -49,6 +63,9 @@ let activeGesture = "None";
 let gestureStartedAt = 0;
 let fistLatched = false;
 let lines: LineValue[] = [];
+let ambientParticles: AmbientParticle[] = [];
+let ambientFrame = 0;
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function buildHexagramRing(): void {
   const ring = element<HTMLDivElement>("hexagramRing");
@@ -72,6 +89,7 @@ function renderLineStack(): void {
     const value = lines[position - 1];
     const row = document.createElement("div");
     row.className = "line-row";
+    if (value && position === lines.length) row.classList.add("newly-cast");
     row.setAttribute("aria-label", `第 ${position} 爻${value ? `，数值 ${value}` : "，未生成"}`);
 
     const label = document.createElement("span");
@@ -99,6 +117,10 @@ function renderLineStack(): void {
 
   stack.replaceChildren(fragment);
   element("lineCount").textContent = String(lines.length);
+  document.querySelectorAll<HTMLElement>("#ritualProgress i").forEach((dot, index) => {
+    dot.classList.toggle("active", index < lines.length);
+    dot.classList.toggle("next", index === lines.length);
+  });
   castButton.disabled = lines.length >= 6;
 }
 
@@ -111,6 +133,7 @@ function secureRandomByte(): number {
 async function castNextLine(source: "gesture" | "manual"): Promise<void> {
   if (lines.length >= 6) return;
   lines.push(castCoinLine(secureRandomByte()));
+  emitCastBurst(source);
   renderLineStack();
   ritualOrbit.classList.remove("casting");
   requestAnimationFrame(() => ritualOrbit.classList.add("casting"));
@@ -150,6 +173,8 @@ function showResult(result: HexagramResponse): void {
   document.querySelectorAll(".hexagram-label.active").forEach((node) => node.classList.remove("active"));
   document.querySelector(`.hexagram-label[data-number="${result.primary.number}"]`)?.classList.add("active");
   ritualOrbit.classList.add("revealed");
+  ritualStage.classList.add("result-revealed");
+  emitResultWave();
   element("gestureHint").textContent = `${result.primary.name}卦已显。可重置后再次起卦。`;
 }
 
@@ -157,6 +182,7 @@ function resetRitual(): void {
   lines = [];
   fistLatched = false;
   ritualOrbit.classList.remove("casting", "revealed");
+  ritualStage.classList.remove("result-revealed");
   document.querySelectorAll(".hexagram-label.active").forEach((node) => node.classList.remove("active"));
   element("resultCard").setAttribute("hidden", "");
   element("emptyResult").removeAttribute("hidden");
@@ -168,7 +194,7 @@ function resetRitual(): void {
 
 async function initRecognizer(): Promise<void> {
   if (recognizer) return;
-  element("gestureHint").textContent = "正在加载本地手势识别模型…";
+  element("gestureHint").textContent = "正在加载手势识别模型…";
   const vision = await FilesetResolver.forVisionTasks(WASM_ROOT);
   recognizer = await GestureRecognizer.createFromOptions(vision, {
     baseOptions: { modelAssetPath: MODEL_URL },
@@ -201,6 +227,7 @@ async function startCamera(): Promise<void> {
     await video.play();
     await initRecognizer();
     cameraButton.textContent = "关闭摄像头";
+    ritualStage.classList.add("camera-live");
     ritualOrbit.classList.add("awakened");
     element("gestureHint").textContent = "摄像头已开启。张掌唤醒，握拳保持约一秒生成一爻。";
     animationFrame = requestAnimationFrame(recognitionLoop);
@@ -219,6 +246,8 @@ function stopCamera(): void {
   video.srcObject = null;
   cameraButton.textContent = "开启摄像头";
   ritualOrbit.classList.remove("awakened");
+  ritualStage.classList.remove("camera-live");
+  setGestureVisual("None", 0);
   element("gestureName").textContent = "等待手势";
   element("gestureScore").textContent = "—";
   if (overlayContext) overlayContext.clearRect(0, 0, overlay.width, overlay.height);
@@ -264,10 +293,17 @@ function handleGesture(result: GestureRecognizerResult, now: number): void {
   element("gestureName").textContent = gestureLabel(name);
   element("gestureScore").textContent = score ? `${Math.round(score * 100)}%` : "—";
 
-  if (name !== activeGesture) {
+  const gestureChanged = name !== activeGesture;
+  if (gestureChanged) {
     activeGesture = name;
     gestureStartedAt = now;
+    announceGestureEntrance(name);
   }
+
+  const holdProgress = name === "Closed_Fist"
+    ? Math.min(1, Math.max(0, (now - gestureStartedAt) / FIST_HOLD_MS))
+    : score;
+  setGestureVisual(name, holdProgress);
 
   if (name === "Open_Palm") {
     fistLatched = false;
@@ -276,13 +312,139 @@ function handleGesture(result: GestureRecognizerResult, now: number): void {
 
   if (name === "Pointing_Up") {
     const indexTip = result.landmarks[0]?.[8];
-    if (indexTip) ritualOrbit.style.setProperty("--hand-rotation", `${(0.5 - indexTip.x) * 70}deg`);
+    if (indexTip) {
+      ritualOrbit.style.setProperty("--hand-rotation", `${(0.5 - indexTip.x) * 86}deg`);
+      ritualOrbit.style.setProperty("--gesture-x", `${indexTip.x * 100}%`);
+      ritualOrbit.style.setProperty("--gesture-y", `${indexTip.y * 100}%`);
+    }
   }
 
   if (name === "Closed_Fist" && !fistLatched && now - gestureStartedAt >= FIST_HOLD_MS) {
     fistLatched = true;
     void castNextLine("gesture");
   }
+}
+
+function setGestureVisual(name: string, progress: number): void {
+  const state = name === "Open_Palm"
+    ? "open"
+    : name === "Closed_Fist"
+      ? "fist"
+      : name === "Pointing_Up"
+        ? "point"
+        : name === "Victory"
+          ? "seal"
+          : name === "Thumb_Up"
+            ? "rise"
+            : name === "Thumb_Down"
+              ? "wane"
+              : name === "ILoveYou"
+                ? "invoke"
+        : "idle";
+  ritualStage.dataset.gesture = state;
+  ritualOrbit.style.setProperty("--charge", String(Math.min(1, Math.max(0, progress))));
+  gestureProgress.style.transform = `scaleX(${Math.min(1, Math.max(0, progress))})`;
+}
+
+function announceGestureEntrance(name: string): void {
+  const hint = {
+    Open_Palm: "掌门已启，阵盘正在苏醒。握拳蓄力即可成爻。",
+    Pointing_Up: "指引星轨：移动食指可牵引阵盘方向。",
+    Closed_Fist: "气聚于掌，保持握拳直至蓄力完成。",
+    Victory: "双指结印：六十四卦与八卦环进入共振。",
+    Thumb_Up: "阳气上升：阵心光柱已经点亮。",
+    Thumb_Down: "阴气下沉：阵盘进入收势状态。",
+    ILoveYou: "三才相应：星芒阵纹已经展开。"
+  }[name];
+  if (!hint) return;
+  element("gestureHint").textContent = hint;
+  ritualOrbit.classList.remove("gesture-flare");
+  void ritualOrbit.offsetWidth;
+  ritualOrbit.classList.add("gesture-flare");
+  window.setTimeout(() => ritualOrbit.classList.remove("gesture-flare"), 900);
+}
+
+function emitCastBurst(source: "gesture" | "manual"): void {
+  castFlash.classList.remove("active");
+  void castFlash.offsetWidth;
+  castFlash.classList.add("active");
+
+  const burst = document.createElement("div");
+  burst.className = "cast-burst";
+  for (let index = 0; index < 24; index += 1) {
+    const spark = document.createElement("i");
+    spark.style.setProperty("--spark-angle", `${index * 15 + Math.random() * 8}deg`);
+    spark.style.setProperty("--spark-distance", `${110 + Math.random() * 190}px`);
+    spark.style.setProperty("--spark-delay", `${Math.random() * 90}ms`);
+    burst.append(spark);
+  }
+  ritualStage.append(burst);
+  window.setTimeout(() => burst.remove(), 1200);
+  if ("vibrate" in navigator) navigator.vibrate(source === "gesture" ? [24, 18, 42] : 28);
+}
+
+function emitResultWave(): void {
+  const wave = document.createElement("div");
+  wave.className = "result-wave";
+  ritualStage.append(wave);
+  window.setTimeout(() => wave.remove(), 1800);
+}
+
+function resizeAmbientCanvas(): void {
+  if (!ambientContext) return;
+  const bounds = ritualStage.getBoundingClientRect();
+  const scale = Math.min(window.devicePixelRatio || 1, 2);
+  ambientCanvas.width = Math.max(1, Math.floor(bounds.width * scale));
+  ambientCanvas.height = Math.max(1, Math.floor(bounds.height * scale));
+  ambientCanvas.style.width = `${bounds.width}px`;
+  ambientCanvas.style.height = `${bounds.height}px`;
+  ambientContext.setTransform(scale, 0, 0, scale, 0, 0);
+  const particleCount = reducedMotion ? 34 : Math.min(120, Math.floor(bounds.width / 8));
+  ambientParticles = Array.from({ length: particleCount }, () => ({
+    x: Math.random() * bounds.width,
+    y: Math.random() * bounds.height,
+    radius: 0.35 + Math.random() * 1.45,
+    speed: 0.035 + Math.random() * 0.13,
+    alpha: 0.18 + Math.random() * 0.58,
+    phase: Math.random() * Math.PI * 2
+  }));
+}
+
+function drawAmbient(now = 0): void {
+  if (!ambientContext) return;
+  const width = ritualStage.clientWidth;
+  const height = ritualStage.clientHeight;
+  ambientContext.clearRect(0, 0, width, height);
+
+  for (const particle of ambientParticles) {
+    if (!reducedMotion) {
+      particle.y -= particle.speed;
+      particle.x += Math.sin(now * 0.00025 + particle.phase) * 0.045;
+      if (particle.y < -8) {
+        particle.y = height + 8;
+        particle.x = Math.random() * width;
+      }
+    }
+    const shimmer = 0.56 + Math.sin(now * 0.0015 + particle.phase) * 0.44;
+    ambientContext.beginPath();
+    ambientContext.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+    ambientContext.fillStyle = `rgba(244, 218, 146, ${particle.alpha * shimmer})`;
+    ambientContext.shadowColor = "rgba(229, 190, 92, .85)";
+    ambientContext.shadowBlur = particle.radius * 5;
+    ambientContext.fill();
+  }
+  ambientContext.shadowBlur = 0;
+  if (!reducedMotion) ambientFrame = requestAnimationFrame(drawAmbient);
+}
+
+function updatePointerParallax(event: PointerEvent): void {
+  const bounds = ritualStage.getBoundingClientRect();
+  const x = (event.clientX - bounds.left) / bounds.width - 0.5;
+  const y = (event.clientY - bounds.top) / bounds.height - 0.5;
+  ritualOrbit.style.setProperty("--tilt-x", `${x * 7}deg`);
+  ritualOrbit.style.setProperty("--tilt-y", `${y * -7}deg`);
+  ritualStage.style.setProperty("--pointer-x", `${(x + 0.5) * 100}%`);
+  ritualStage.style.setProperty("--pointer-y", `${(y + 0.5) * 100}%`);
 }
 
 function gestureLabel(name: string): string {
@@ -314,8 +476,19 @@ async function checkService(): Promise<void> {
 cameraButton.addEventListener("click", () => void startCamera());
 castButton.addEventListener("click", () => void castNextLine("manual"));
 resetButton.addEventListener("click", resetRitual);
-window.addEventListener("beforeunload", stopCamera);
+ritualStage.addEventListener("pointermove", updatePointerParallax);
+ritualStage.addEventListener("pointerleave", () => {
+  ritualOrbit.style.setProperty("--tilt-x", "0deg");
+  ritualOrbit.style.setProperty("--tilt-y", "0deg");
+});
+window.addEventListener("resize", resizeAmbientCanvas);
+window.addEventListener("beforeunload", () => {
+  stopCamera();
+  if (ambientFrame) cancelAnimationFrame(ambientFrame);
+});
 
 buildHexagramRing();
 renderLineStack();
+resizeAmbientCanvas();
+drawAmbient();
 void checkService();

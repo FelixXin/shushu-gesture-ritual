@@ -2,15 +2,34 @@ name: shushu-gesture-ritual
 
 services:
   api:
+    image: shushu-gesture-ritual-api:local
     build: ./backend
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 
   web:
+    image: shushu-gesture-ritual-web:local
     build: ./frontend
-    environment:
-      API_PROXY_TARGET: http://api:8000
     ports:
-      - "5173:5173"
+      - "127.0.0.1:${SHUSHU_BIND_PORT:-5174}:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
