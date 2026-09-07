@@ -730,6 +730,12 @@ a:focus-visible {
   bottom: clamp(24px, 4vh, 44px);
   max-width: 300px;
   pointer-events: none;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.ritual-stage.camera-live .stage-copy {
+  opacity: 0;
+  transform: translateY(12px);
 }
 
 .eyebrow {
@@ -838,8 +844,10 @@ a:focus-visible {
   z-index: 5;
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 28px;
+  min-height: 0;
+  gap: 16px;
+  padding: 22px 24px;
+  overflow-y: auto;
   border-left: 1px solid var(--line);
   background: var(--panel);
   box-shadow: -20px 0 60px rgba(0, 0, 0, 0.28);
@@ -887,7 +895,7 @@ a:focus-visible {
 }
 
 .control-section {
-  padding-bottom: 22px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -954,8 +962,8 @@ a:focus-visible {
 
 .line-stack {
   display: grid;
-  gap: 7px;
-  margin-top: 18px;
+  gap: 4px;
+  margin-top: 12px;
 }
 
 .line-row {
@@ -963,7 +971,7 @@ a:focus-visible {
   grid-template-columns: 20px 1fr 24px;
   gap: 12px;
   align-items: center;
-  min-height: 24px;
+  min-height: 20px;
 }
 
 .line-row.newly-cast {
@@ -1076,8 +1084,8 @@ a:focus-visible {
 
 .primary-actions {
   display: grid;
-  gap: 10px;
-  margin-top: auto;
+  gap: 8px;
+  margin-top: 0;
 }
 
 .primary-button,
