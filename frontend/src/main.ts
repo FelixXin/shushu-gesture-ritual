@@ -5,7 +5,8 @@ import {
   type GestureRecognizerResult
 } from "@mediapipe/tasks-vision";
 
-import { castCoinLine, HEXAGRAM_NAMES, linePresentation, type LineValue } from "./hexagrams";
+import { createHexagramSectors, findHexagramSector } from "./compass";
+import { castCoinLine, linePresentation, type LineValue } from "./hexagrams";
 
 type HexagramSummary = {
   number: number;
@@ -70,12 +71,17 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matc
 function buildHexagramRing(): void {
   const ring = element<HTMLDivElement>("hexagramRing");
   const fragment = document.createDocumentFragment();
-  HEXAGRAM_NAMES.forEach((name, index) => {
+  createHexagramSectors().forEach((sector) => {
     const label = document.createElement("span");
-    label.className = "hexagram-label";
-    label.dataset.number = String(index + 1);
-    label.style.setProperty("--angle", `${index * 5.625}deg`);
-    label.textContent = `${index + 1}·${name}`;
+    label.className = "hexagram-sector";
+    label.dataset.number = String(sector.number);
+    label.style.setProperty("--angle", `${sector.angle}deg`);
+
+    const number = document.createElement("b");
+    number.textContent = String(sector.number);
+    const name = document.createElement("span");
+    name.textContent = sector.name;
+    label.append(number, name);
     fragment.append(label);
   });
   ring.replaceChildren(fragment);
@@ -117,6 +123,8 @@ function renderLineStack(): void {
 
   stack.replaceChildren(fragment);
   element("lineCount").textContent = String(lines.length);
+  ritualOrbit.dataset.castStep = String(lines.length);
+  ritualOrbit.style.setProperty("--cast-progress", `${lines.length * 60}deg`);
   document.querySelectorAll<HTMLElement>("#ritualProgress i").forEach((dot, index) => {
     dot.classList.toggle("active", index < lines.length);
     dot.classList.toggle("next", index === lines.length);
@@ -170,8 +178,14 @@ function showResult(result: HexagramResponse): void {
     ? `动爻：${result.moving_lines.join("、")}`
     : "无动爻";
 
-  document.querySelectorAll(".hexagram-label.active").forEach((node) => node.classList.remove("active"));
-  document.querySelector(`.hexagram-label[data-number="${result.primary.number}"]`)?.classList.add("active");
+  document.querySelectorAll(".hexagram-sector.active").forEach((node) => node.classList.remove("active"));
+  const sector = findHexagramSector(result.primary.number);
+  if (sector) {
+    ritualOrbit.style.setProperty("--result-angle", `${sector.angle}deg`);
+    ritualOrbit.style.setProperty("--result-spin", `-${sector.angle}deg`);
+    ritualOrbit.style.setProperty("--result-overshoot", `-${sector.angle * 1.08}deg`);
+    document.querySelector(`.hexagram-sector[data-number="${sector.number}"]`)?.classList.add("active");
+  }
   ritualOrbit.classList.add("revealed");
   ritualStage.classList.add("result-revealed");
   emitResultWave();
@@ -182,8 +196,13 @@ function resetRitual(): void {
   lines = [];
   fistLatched = false;
   ritualOrbit.classList.remove("casting", "revealed");
+  delete ritualOrbit.dataset.castStep;
+  ritualOrbit.style.removeProperty("--cast-progress");
+  ritualOrbit.style.removeProperty("--result-angle");
+  ritualOrbit.style.removeProperty("--result-spin");
+  ritualOrbit.style.removeProperty("--result-overshoot");
   ritualStage.classList.remove("result-revealed");
-  document.querySelectorAll(".hexagram-label.active").forEach((node) => node.classList.remove("active"));
+  document.querySelectorAll(".hexagram-sector.active").forEach((node) => node.classList.remove("active"));
   element("resultCard").setAttribute("hidden", "");
   element("emptyResult").removeAttribute("hidden");
   element("gestureHint").textContent = stream

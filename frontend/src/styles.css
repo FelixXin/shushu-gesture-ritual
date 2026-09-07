@@ -135,7 +135,7 @@ a:focus-visible {
   --pointer-x: 50%;
   --pointer-y: 50%;
   position: relative;
-  min-height: 720px;
+  min-height: calc(100vh - 72px);
   overflow: hidden;
   display: grid;
   place-items: center;
@@ -210,15 +210,20 @@ a:focus-visible {
 }
 
 .ritual-orbit {
+  --orbit-size: min(70vw, calc(100vh - 118px), 720px);
   --hand-rotation: 0deg;
   --tilt-x: 0deg;
   --tilt-y: 0deg;
   --charge: 0;
+  --cast-progress: 0deg;
+  --result-angle: 0deg;
+  --result-spin: 0deg;
+  --result-overshoot: 0deg;
   --gesture-x: 50%;
   --gesture-y: 50%;
   position: relative;
   z-index: 3;
-  width: min(68vw, 670px);
+  width: var(--orbit-size);
   aspect-ratio: 1;
   border-radius: 50%;
   transform: perspective(1000px) rotateX(var(--tilt-y)) rotateY(var(--tilt-x)) rotateZ(var(--hand-rotation));
@@ -258,14 +263,14 @@ a:focus-visible {
 }
 
 .energy-halo-outer {
-  inset: 3%;
-  border: 1px dashed rgba(242, 221, 160, 0.24);
-  box-shadow: inset 0 0 22px rgba(214, 179, 101, 0.08), 0 0 24px rgba(214, 179, 101, 0.07);
+  inset: 1.5%;
+  border: 1px dashed rgba(242, 221, 160, 0.3);
+  box-shadow: inset 0 0 24px rgba(214, 179, 101, 0.1), 0 0 30px rgba(214, 179, 101, 0.08);
   animation: slow-spin 64s linear infinite;
 }
 
 .energy-halo-inner {
-  inset: 23%;
+  inset: 21%;
   border: 1px dotted rgba(121, 213, 189, 0.25);
   box-shadow: 0 0 30px rgba(121, 213, 189, calc(var(--charge) * 0.2));
   animation: reverse-spin 26s linear infinite;
@@ -273,11 +278,11 @@ a:focus-visible {
 
 .celestial-spokes {
   position: absolute;
-  inset: 11%;
+  inset: 6.8%;
   border-radius: 50%;
   opacity: 0.13;
   background: repeating-conic-gradient(from 0deg, rgba(242, 221, 160, 0.85) 0 .18deg, transparent .22deg 5.625deg);
-  mask: radial-gradient(transparent 0 53%, #000 54% 55%, transparent 56% 78%, #000 79% 80%, transparent 81%);
+  mask: radial-gradient(transparent 0 64%, #000 64.4% 65.1%, transparent 65.5% 86%, #000 86.4% 87.1%, transparent 87.5%);
   animation: reverse-spin 110s linear infinite;
 }
 
@@ -302,69 +307,195 @@ a:focus-visible {
 }
 
 .orbit-line-middle {
-  inset: 29%;
+  inset: 27%;
 }
 
-.hexagram-ring,
+.hexagram-ring {
+  position: absolute;
+  inset: 3.5%;
+  border: 1px solid rgba(214, 179, 101, 0.34);
+  border-radius: 50%;
+  box-shadow: inset 0 0 38px rgba(214, 179, 101, 0.04);
+}
+
+.hexagram-ring::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  opacity: 0.74;
+  background:
+    repeating-conic-gradient(from -2.8125deg, rgba(242, 221, 160, 0.78) 0 .28deg, transparent .32deg 5.625deg),
+    repeating-conic-gradient(from -2.8125deg, rgba(214, 179, 101, 0.42) 0 .72deg, transparent .78deg 22.5deg);
+  mask: radial-gradient(transparent 0 78%, #000 78.4% 96%, transparent 96.4%);
+}
+
+.hexagram-ring::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  width: 2px;
+  height: 43%;
+  opacity: 0;
+  background: linear-gradient(to top, transparent 7%, rgba(242, 221, 160, 0.84) 44%, transparent);
+  box-shadow: 0 0 12px var(--gold-bright), 0 0 28px var(--gold);
+  transform-origin: 50% 100%;
+  transform: translate(-50%, -100%) rotate(var(--result-angle));
+  transition: opacity 480ms ease;
+}
+
+.hexagram-sector {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  display: grid;
+  width: 30px;
+  gap: 1px;
+  justify-items: center;
+  margin-left: -15px;
+  color: rgba(227, 208, 160, 0.62);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(7px, 0.67vw, 10px);
+  line-height: 1;
+  text-align: center;
+  transform: rotate(var(--angle)) translateY(calc(var(--orbit-size) * -0.464)) rotate(calc(var(--angle) * -1));
+  transform-origin: 50% 50%;
+  transition: color 240ms ease, filter 240ms ease, transform 360ms cubic-bezier(.18, .82, .2, 1);
+}
+
+.hexagram-sector::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -11px;
+  width: 1px;
+  height: 8px;
+  background: rgba(214, 179, 101, 0.6);
+  transform: translateX(-50%);
+}
+
+.hexagram-sector:nth-child(8n + 1)::before {
+  height: 14px;
+  background: var(--gold-bright);
+}
+
+.hexagram-sector b,
+.hexagram-sector span {
+  font: inherit;
+  font-weight: 500;
+}
+
+.hexagram-sector b {
+  color: rgba(242, 221, 160, 0.46);
+  font-size: 0.85em;
+}
+
+.hexagram-sector.active {
+  z-index: 5;
+  color: #fff0b4;
+  font-size: clamp(10px, 0.95vw, 14px);
+  font-weight: 700;
+  filter: drop-shadow(0 0 6px #fff) drop-shadow(0 0 16px var(--gold));
+}
+
+.hexagram-sector.active b {
+  color: var(--jade);
+}
+
+.hexagram-sector.active::before {
+  height: 22px;
+  width: 2px;
+  background: var(--gold-bright);
+  box-shadow: 0 0 12px var(--gold);
+}
+
 .bagua-ring {
   position: absolute;
-  inset: 50%;
+  inset: 23%;
+  border: 1px solid rgba(121, 213, 189, 0.28);
+  border-radius: 50%;
+  background: radial-gradient(circle, transparent 63%, rgba(121, 213, 189, 0.045) 64% 66%, transparent 67%);
+  box-shadow: inset 0 0 30px rgba(121, 213, 189, 0.035);
 }
 
-.hexagram-label,
 .bagua-ring span {
   position: absolute;
-  left: 0;
-  top: 0;
-  transform-origin: 0 0;
-  white-space: nowrap;
-  color: rgba(227, 208, 160, 0.58);
-  transition: color 220ms ease, text-shadow 220ms ease, font-size 220ms ease;
-}
-
-.hexagram-label {
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(7px, 0.68vw, 10px);
-  transform: rotate(var(--angle)) translateY(calc(min(68vw, 670px) * -0.455)) rotate(calc(var(--angle) * -1));
-}
-
-.hexagram-label.active {
-  z-index: 4;
-  color: #fff0b4;
-  font-size: clamp(11px, 1vw, 15px);
-  font-weight: 700;
-  text-shadow: 0 0 8px #fff, 0 0 24px var(--gold);
-}
-
-.bagua-ring span {
+  left: 50%;
+  top: 50%;
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  width: 42px;
+  margin-left: -21px;
   font-size: clamp(12px, 1.2vw, 18px);
-  letter-spacing: 0.12em;
+  line-height: 1;
   color: rgba(242, 221, 160, 0.82);
-  transform: rotate(var(--angle)) translateY(calc(min(68vw, 670px) * -0.295)) rotate(calc(var(--angle) * -1));
+  transform: rotate(var(--angle)) translateY(calc(var(--orbit-size) * -0.285)) rotate(calc(var(--angle) * -1));
+  transition: color 220ms ease, text-shadow 220ms ease;
+}
+
+.bagua-ring span b {
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.bagua-ring span i {
+  color: var(--jade);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.76em;
+  font-style: normal;
 }
 
 .jiugong {
   position: absolute;
-  inset: 33%;
+  inset: 32%;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
   transform: rotate(45deg);
-  border: 1px solid rgba(214, 179, 101, 0.35);
-  box-shadow: inset 0 0 30px rgba(214, 179, 101, 0.035);
+  border: 1px solid rgba(214, 179, 101, 0.44);
+  box-shadow: inset 0 0 34px rgba(214, 179, 101, 0.07), 0 0 24px rgba(214, 179, 101, 0.05);
   transition: box-shadow 450ms ease, border-color 450ms ease;
+}
+
+.jiugong::after {
+  content: "";
+  position: absolute;
+  inset: -14%;
+  z-index: -1;
+  border-radius: 50%;
+  opacity: 0.54;
+  background: conic-gradient(from -90deg, var(--gold) 0 var(--cast-progress), rgba(214, 179, 101, 0.06) var(--cast-progress) 360deg);
+  mask: radial-gradient(transparent 0 63%, #000 64% 67%, transparent 68%);
+  transition: background 520ms ease;
 }
 
 .jiugong span {
   display: grid;
   place-items: center;
   border: 1px solid rgba(214, 179, 101, 0.16);
-  color: rgba(242, 221, 160, 0.56);
+  color: rgba(242, 221, 160, 0.62);
+  font-size: clamp(11px, 1vw, 16px);
   transform: rotate(-45deg);
 }
 
 .jiugong .center-palace {
+  gap: 2px;
   color: var(--gold-bright);
+  text-align: center;
+}
+
+.center-palace b {
+  font-weight: 600;
+}
+
+.center-palace small {
+  color: var(--jade);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.55em;
 }
 
 .taiji {
@@ -434,11 +565,11 @@ a:focus-visible {
 .gesture-aura i:nth-child(6) { --ray: 300deg; }
 
 .ritual-orbit.awakened .hexagram-ring {
-  animation: slow-spin 34s linear infinite;
+  animation: luopan-outer-turn 46s linear infinite;
 }
 
 .ritual-orbit.awakened .bagua-ring {
-  animation: reverse-spin 24s linear infinite;
+  animation: luopan-inner-turn 30s linear infinite;
 }
 
 .ritual-orbit.awakened .taiji {
@@ -539,6 +670,18 @@ a:focus-visible {
   animation: cast-pulse 780ms cubic-bezier(.16, .8, .2, 1);
 }
 
+.ritual-orbit.casting .hexagram-ring {
+  animation: luopan-cast-outer 780ms cubic-bezier(.16, .8, .2, 1);
+}
+
+.ritual-orbit.casting .bagua-ring {
+  animation: luopan-cast-inner 700ms cubic-bezier(.16, .8, .2, 1);
+}
+
+.ritual-orbit.casting .jiugong::after {
+  animation: cast-progress-arrive 760ms cubic-bezier(.16, .8, .2, 1);
+}
+
 .ritual-orbit.gesture-flare {
   animation: gesture-flare 860ms cubic-bezier(.16, .8, .2, 1);
 }
@@ -552,7 +695,20 @@ a:focus-visible {
   animation-duration: 6s;
 }
 
-.ritual-stage.result-revealed .hexagram-label:not(.active) {
+.ritual-orbit.revealed .hexagram-ring {
+  animation: luopan-result-settle 1.25s cubic-bezier(.12, .8, .18, 1) both;
+}
+
+.ritual-orbit.revealed .bagua-ring {
+  animation: luopan-result-counter 1.05s cubic-bezier(.12, .8, .18, 1) both;
+}
+
+.ritual-orbit.revealed .hexagram-ring::after {
+  opacity: 1;
+  animation: result-ray 1.4s ease-in-out infinite;
+}
+
+.ritual-stage.result-revealed .hexagram-sector:not(.active) {
   opacity: 0.3;
 }
 
@@ -560,8 +716,8 @@ a:focus-visible {
   position: absolute;
   z-index: 7;
   left: clamp(20px, 4vw, 58px);
-  bottom: clamp(30px, 5vh, 58px);
-  max-width: 510px;
+  bottom: clamp(24px, 4vh, 44px);
+  max-width: 300px;
   pointer-events: none;
 }
 
@@ -577,9 +733,9 @@ a:focus-visible {
 
 .stage-copy h1 {
   margin: 0;
-  font-size: clamp(30px, 4vw, 58px);
+  font-size: clamp(24px, 2.25vw, 34px);
   font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: transparent;
   background: linear-gradient(105deg, #f8edce 15%, #c9ab65 52%, #fff4d0 74%, #b9e4d8);
   background-size: 220% 100%;
@@ -589,10 +745,10 @@ a:focus-visible {
 }
 
 .stage-copy p:last-child {
-  margin: 14px 0 0;
+  margin: 9px 0 0;
   color: #c8bfa9;
   font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.7;
 }
 
@@ -1041,6 +1197,49 @@ a:focus-visible {
   to { transform: rotate(-360deg); }
 }
 
+@keyframes luopan-outer-turn {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes luopan-inner-turn {
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes luopan-cast-outer {
+  0% { transform: rotate(0) scale(1); filter: brightness(1); }
+  38% { transform: rotate(-38deg) scale(0.982); filter: brightness(1.8); }
+  100% { transform: rotate(112deg) scale(1); filter: brightness(1); }
+}
+
+@keyframes luopan-cast-inner {
+  0% { transform: rotate(0) scale(1); }
+  42% { transform: rotate(26deg) scale(1.05); }
+  100% { transform: rotate(-86deg) scale(1); }
+}
+
+@keyframes cast-progress-arrive {
+  0% { opacity: 0.1; scale: 0.84; }
+  45% { opacity: 1; scale: 1.16; filter: brightness(1.9); }
+  100% { opacity: 0.54; scale: 1; filter: brightness(1); }
+}
+
+@keyframes luopan-result-settle {
+  0% { transform: rotate(0); }
+  70% { transform: rotate(var(--result-overshoot)); }
+  100% { transform: rotate(var(--result-spin)); }
+}
+
+@keyframes luopan-result-counter {
+  0% { transform: rotate(0); }
+  65% { transform: rotate(38deg); }
+  100% { transform: rotate(24deg); }
+}
+
+@keyframes result-ray {
+  0%, 100% { filter: brightness(0.85); opacity: 0.64; }
+  50% { filter: brightness(1.45); opacity: 1; }
+}
+
 @keyframes cast-pulse {
   0% { scale: 1; }
   28% { scale: 0.965; filter: brightness(1.25); }
@@ -1168,15 +1367,7 @@ a:focus-visible {
   }
 
   .ritual-orbit {
-    width: min(92vw, 620px);
-  }
-
-  .hexagram-label {
-    transform: rotate(var(--angle)) translateY(calc(min(92vw, 620px) * -0.455)) rotate(calc(var(--angle) * -1));
-  }
-
-  .bagua-ring span {
-    transform: rotate(var(--angle)) translateY(calc(min(92vw, 620px) * -0.295)) rotate(calc(var(--angle) * -1));
+    --orbit-size: min(92vw, 620px);
   }
 
   .control-panel {
@@ -1199,12 +1390,35 @@ a:focus-visible {
     min-height: 610px;
   }
 
+  .ritual-orbit {
+    --orbit-size: min(96vw, 520px);
+  }
+
+  .hexagram-sector {
+    width: 24px;
+    margin-left: -12px;
+    font-size: 7px;
+  }
+
+  .hexagram-sector b {
+    display: none;
+  }
+
+  .hexagram-sector:nth-child(odd):not(.active) {
+    opacity: 0;
+  }
+
+  .bagua-ring span {
+    font-size: 12px;
+  }
+
   .stage-copy {
     bottom: 24px;
+    max-width: 240px;
   }
 
   .stage-copy h1 {
-    font-size: 28px;
+    font-size: 23px;
   }
 
   .gesture-chip {
