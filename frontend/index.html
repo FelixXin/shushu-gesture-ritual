@@ -30,12 +30,14 @@
         <section class="ritual-stage" id="ritualStage" aria-labelledby="ritualTitle">
           <video id="cameraVideo" autoplay muted playsinline aria-label="摄像头实时画面"></video>
           <canvas id="ambientCanvas" aria-hidden="true"></canvas>
+          <canvas id="luopanCanvas" aria-label="十四层三维罗盘"></canvas>
           <canvas id="handOverlay" aria-hidden="true"></canvas>
           <div class="celestial-noise" aria-hidden="true"></div>
           <div class="stage-vignette" aria-hidden="true"></div>
           <div class="cast-flash" id="castFlash" aria-hidden="true"></div>
 
-          <div class="ritual-orbit" id="ritualOrbit">
+          <div id="luopanFallback">
+            <div class="ritual-orbit" id="ritualOrbit">
             <div class="energy-halo energy-halo-outer" aria-hidden="true"></div>
             <div class="energy-halo energy-halo-inner" aria-hidden="true"></div>
             <div class="celestial-spokes" aria-hidden="true"></div>
@@ -66,6 +68,7 @@
 
             <div class="gesture-aura" aria-hidden="true">
               <i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
             </div>
           </div>
 

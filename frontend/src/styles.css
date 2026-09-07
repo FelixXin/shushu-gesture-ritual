@@ -160,6 +160,7 @@ a:focus-visible {
 
 #cameraVideo,
 #ambientCanvas,
+#luopanCanvas,
 #handOverlay,
 .celestial-noise,
 .stage-vignette {
@@ -180,6 +181,16 @@ a:focus-visible {
 #ambientCanvas {
   z-index: 1;
   pointer-events: none;
+}
+
+#luopanCanvas {
+  z-index: 4;
+  pointer-events: none;
+}
+
+.ritual-stage.webgl-ready #luopanFallback {
+  opacity: 0.08;
+  transition: opacity 400ms ease;
 }
 
 #handOverlay {

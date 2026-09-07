@@ -7,6 +7,8 @@ import {
 
 import { createHexagramSectors, findHexagramSector } from "./compass";
 import { castCoinLine, linePresentation, type LineValue } from "./hexagrams";
+import { createLuopanScene } from "./luopan-scene";
+import { ritualActionForGesture } from "./ritual-gestures";
 
 type HexagramSummary = {
   number: number;
@@ -36,6 +38,7 @@ const element = <T extends HTMLElement>(id: string): T => {
 
 const video = element<HTMLVideoElement>("cameraVideo");
 const ambientCanvas = element<HTMLCanvasElement>("ambientCanvas");
+const luopanCanvas = element<HTMLCanvasElement>("luopanCanvas");
 const ambientContext = ambientCanvas.getContext("2d");
 const overlay = element<HTMLCanvasElement>("handOverlay");
 const overlayContext = overlay.getContext("2d");
@@ -67,6 +70,8 @@ let lines: LineValue[] = [];
 let ambientParticles: AmbientParticle[] = [];
 let ambientFrame = 0;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const luopanScene = createLuopanScene(luopanCanvas);
+if (luopanScene) ritualStage.classList.add("webgl-ready");
 
 function buildHexagramRing(): void {
   const ring = element<HTMLDivElement>("hexagramRing");
@@ -141,6 +146,7 @@ function secureRandomByte(): number {
 async function castNextLine(source: "gesture" | "manual"): Promise<void> {
   if (lines.length >= 6) return;
   lines.push(castCoinLine(secureRandomByte()));
+  luopanScene?.castLine(lines.length);
   emitCastBurst(source);
   renderLineStack();
   ritualOrbit.classList.remove("casting");
@@ -187,6 +193,7 @@ function showResult(result: HexagramResponse): void {
     document.querySelector(`.hexagram-sector[data-number="${sector.number}"]`)?.classList.add("active");
   }
   ritualOrbit.classList.add("revealed");
+  luopanScene?.revealHexagram(result.primary.number);
   ritualStage.classList.add("result-revealed");
   emitResultWave();
   element("gestureHint").textContent = `${result.primary.name}卦已显。可重置后再次起卦。`;
@@ -202,6 +209,7 @@ function resetRitual(): void {
   ritualOrbit.style.removeProperty("--result-spin");
   ritualOrbit.style.removeProperty("--result-overshoot");
   ritualStage.classList.remove("result-revealed");
+  luopanScene?.reset();
   document.querySelectorAll(".hexagram-sector.active").forEach((node) => node.classList.remove("active"));
   element("resultCard").setAttribute("hidden", "");
   element("emptyResult").removeAttribute("hidden");
@@ -324,6 +332,8 @@ function handleGesture(result: GestureRecognizerResult, now: number): void {
     : score;
   setGestureVisual(name, holdProgress);
 
+  const action = ritualActionForGesture(name, luopanScene?.getState().mode ?? "dormant");
+  if (action === "awaken") luopanScene?.awaken();
   if (name === "Open_Palm") {
     fistLatched = false;
     ritualOrbit.classList.add("awakened");
@@ -335,10 +345,16 @@ function handleGesture(result: GestureRecognizerResult, now: number): void {
       ritualOrbit.style.setProperty("--hand-rotation", `${(0.5 - indexTip.x) * 86}deg`);
       ritualOrbit.style.setProperty("--gesture-x", `${indexTip.x * 100}%`);
       ritualOrbit.style.setProperty("--gesture-y", `${indexTip.y * 100}%`);
+      luopanScene?.guide({ x: indexTip.x, y: indexTip.y, roll: 0 });
     }
   }
 
   if (name === "Closed_Fist" && !fistLatched && now - gestureStartedAt >= FIST_HOLD_MS) {
+    fistLatched = true;
+    if ((luopanScene?.getState().mode ?? "dormant") === "dormant") luopanScene?.awaken();
+    else luopanScene?.toggleDepth();
+  }
+  if (name === "Victory" && !fistLatched && now - gestureStartedAt >= FIST_HOLD_MS) {
     fistLatched = true;
     void castNextLine("gesture");
   }
@@ -503,6 +519,7 @@ ritualStage.addEventListener("pointerleave", () => {
 window.addEventListener("resize", resizeAmbientCanvas);
 window.addEventListener("beforeunload", () => {
   stopCamera();
+  luopanScene?.dispose();
   if (ambientFrame) cancelAnimationFrame(ambientFrame);
 });
 
